@@ -8,10 +8,13 @@
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+ <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+ <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
   <style>
     /* ===== RESET & BASE ===== */
@@ -508,8 +511,13 @@ function updateStats() {
 fetch('data/data.geojson')
   .then(r => { if (!r.ok) throw new Error('Gagal memuat data.geojson'); return r.json(); })
   .then(data => {
-    // Group polygon & point layers
-    const pointLayer   = L.layerGroup().addTo(map);
+    const pointLayer = L.markerClusterGroup({
+    chunkedLoading: true,        
+    showCoverageOnHover: false,  
+    maxClusterRadius: 50         
+});
+
+map.addLayer(pointLayer);
     const polygonLayer = L.layerGroup().addTo(map);
 
     L.geoJSON(data, {
