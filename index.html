@@ -595,7 +595,7 @@ function updateStats() {
 // ============================================================
 //  LOAD & RENDER GEOJSON
 // ============================================================
-fetch('data.geojson')
+fetch('data/data.geojson')
   .then(r => { if (!r.ok) throw new Error('Gagal memuat data.geojson'); return r.json(); })
   .then(data => {
     // Marker Cluster Group untuk mengelompokkan marker berdekatan
