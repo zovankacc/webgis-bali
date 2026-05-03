@@ -8,10 +8,15 @@
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- MarkerCluster JS -->
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
   <style>
     /* ===== RESET & BASE ===== */
@@ -326,6 +331,85 @@
       transition: background 0.2s, transform 0.2s;
     }
     #legend-toggle:hover { background: var(--purple-mid); transform: scale(1.08); }
+
+    /* ===== MARKER CLUSTER STYLING ===== */
+    .marker-cluster {
+      background: transparent !important;
+    }
+
+    .marker-cluster div {
+      width: 36px !important;
+      height: 36px !important;
+      margin-left: 0 !important;
+      margin-top: 0 !important;
+      border-radius: 50% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-family: 'Inter', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 0.8rem !important;
+      color: #f3e8ff !important;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
+    }
+
+    .marker-cluster-small {
+      width: 40px !important;
+      height: 40px !important;
+    }
+    .marker-cluster-small div {
+      width: 32px !important;
+      height: 32px !important;
+      background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+      border: 3px solid rgba(233, 213, 255, 0.5) !important;
+      box-shadow: 0 0 14px rgba(168, 85, 247, 0.6),
+                  0 0 28px rgba(124, 58, 237, 0.3) !important;
+      font-size: 0.75rem !important;
+    }
+
+    .marker-cluster-medium {
+      width: 48px !important;
+      height: 48px !important;
+    }
+    .marker-cluster-medium div {
+      width: 40px !important;
+      height: 40px !important;
+      background: linear-gradient(135deg, #7c3aed, #ec4899) !important;
+      border: 3px solid rgba(236, 72, 153, 0.45) !important;
+      box-shadow: 0 0 18px rgba(236, 72, 153, 0.5),
+                  0 0 36px rgba(124, 58, 237, 0.3) !important;
+      font-size: 0.85rem !important;
+    }
+
+    .marker-cluster-large {
+      width: 56px !important;
+      height: 56px !important;
+    }
+    .marker-cluster-large div {
+      width: 46px !important;
+      height: 46px !important;
+      background: linear-gradient(135deg, #ec4899, #f43f5e) !important;
+      border: 3px solid rgba(244, 63, 94, 0.45) !important;
+      box-shadow: 0 0 22px rgba(244, 63, 94, 0.5),
+                  0 0 44px rgba(236, 72, 153, 0.3) !important;
+      font-size: 0.95rem !important;
+    }
+
+    /* Pulse animation on cluster hover */
+    .marker-cluster:hover div {
+      animation: cluster-pulse 0.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes cluster-pulse {
+      from { transform: scale(1); }
+      to   { transform: scale(1.12); }
+    }
+
+    /* Spider legs styling */
+    .leaflet-cluster-anim .leaflet-marker-icon,
+    .leaflet-cluster-anim .leaflet-marker-shadow {
+      transition: transform 0.3s ease, opacity 0.3s ease !important;
+    }
   </style>
 </head>
 
@@ -511,11 +595,36 @@ function updateStats() {
 // ============================================================
 //  LOAD & RENDER GEOJSON
 // ============================================================
-fetch('data/data.geojson')
+fetch('data.geojson')
   .then(r => { if (!r.ok) throw new Error('Gagal memuat data.geojson'); return r.json(); })
   .then(data => {
-    // Group polygon & point layers
-    const pointLayer   = L.layerGroup().addTo(map);
+    // Marker Cluster Group untuk mengelompokkan marker berdekatan
+    const clusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: true,
+      zoomToBoundsOnClick: true,
+      disableClusteringAtZoom: 18,
+      animate: true,
+      animateAddingMarkers: false,
+      spiderfyDistanceMultiplier: 1.5,
+      // Custom cluster icon with count
+      iconCreateFunction: function(cluster) {
+        const count = cluster.getChildCount();
+        let sizeClass = 'small';
+        if (count >= 50) sizeClass = 'large';
+        else if (count >= 15) sizeClass = 'medium';
+
+        return L.divIcon({
+          html: '<div>' + count + '</div>',
+          className: 'marker-cluster marker-cluster-' + sizeClass,
+          iconSize: L.point(sizeClass === 'large' ? 56 : sizeClass === 'medium' ? 48 : 40,
+                            sizeClass === 'large' ? 56 : sizeClass === 'medium' ? 48 : 40),
+        });
+      },
+    });
+
+    // Polygon layer (tidak di-cluster)
     const polygonLayer = L.layerGroup().addTo(map);
 
     L.geoJSON(data, {
@@ -560,6 +669,9 @@ fetch('data/data.geojson')
         else if (cat === 'cafe') stats.cafe++;
         else if (cat === 'hotel') stats.hotel++;
 
+        // Tambahkan ke cluster group, bukan langsung ke map
+        clusterGroup.addLayer(marker);
+
         return marker;
       },
 
@@ -596,7 +708,10 @@ fetch('data/data.geojson')
         polygonLayer.addLayer(layer);
       },
 
-    }).addTo(pointLayer);
+    });
+
+    // Tambahkan cluster group ke map
+    map.addLayer(clusterGroup);
 
     updateStats();
 
